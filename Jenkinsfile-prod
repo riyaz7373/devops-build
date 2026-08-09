@@ -1,0 +1,77 @@
+pipeline {
+    agent any
+
+    environment {
+        DOCKERHUB_USER = 'riyaz7373'
+        IMAGE_NAME = 'devops-build-prod'
+        IMAGE_TAG = 'prod'
+        DOCKER_CREDENTIALS = 'dockerhub-creds'
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh '''
+                    chmod +x build.sh
+                    ./build.sh prod
+                '''
+            }
+        }
+
+        stage('Tag Docker Image') {
+            steps {
+                sh '''
+                    docker tag devops-build-web:prod \
+                    ${DOCKERHUB_USER}/${IMAGE_NAME}:${IMAGE_TAG}
+                '''
+            }
+        }
+
+        stage('Push to Private Docker Hub') {
+            steps {
+                withCredentials([
+                    usernamePassword(
+                        credentialsId: "${DOCKER_CREDENTIALS}",
+                        usernameVariable: 'DOCKER_USER',
+                        passwordVariable: 'DOCKER_PASSWORD'
+                    )
+                ]) {
+                    sh '''
+                        echo "$DOCKER_PASSWORD" | docker login \
+                        -u "$DOCKER_USER" \
+                        --password-stdin
+
+                        docker push \
+                        ${DOCKERHUB_USER}/${IMAGE_NAME}:${IMAGE_TAG}
+                    '''
+                }
+            }
+        }
+
+        stage('Deploy Production') {
+            steps {
+                sh '''
+                    chmod +x deploy.sh
+                    ./deploy.sh prod
+                '''
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'Production deployment completed successfully!'
+        }
+
+        failure {
+            echo 'Production deployment failed!'
+        }
+    }
+}
