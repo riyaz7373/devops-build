@@ -55,12 +55,22 @@ pipeline {
             }
         }
 
-        stage('Deploy') {
+        stage('Deploy to EC2-3') {
             steps {
-                sh '''
-                    chmod +x deploy.sh
-                    ./deploy.sh dev
-                '''
+                sshagent(credentials: ['app-server-key']) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no ubuntu@172.31.12.13 "
+                            docker pull riyaz7373/devops-build-dev:dev &&
+                            docker stop devops-app || true &&
+                            docker rm devops-app || true &&
+                            docker run -d \
+                                --name devops-app \
+                                --restart always \
+                                -p 80:80 \
+                                riyaz7373/devops-build-dev:dev
+                        "
+                    '''
+                }
             }
         }
     }
