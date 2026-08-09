@@ -77,11 +77,11 @@ pipeline {
 
     post {
         success {
-            echo 'Prod deployment completed successfully!'
+            echo 'Production deployment completed successfully!'
         }
 
         failure {
-            echo 'Prod deployment failed!'
+            echo 'Production deployment failed!'
         }
     }
 }
