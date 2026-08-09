@@ -6,6 +6,7 @@ pipeline {
         IMAGE_NAME = 'devops-build-prod'
         IMAGE_TAG = 'prod'
         DOCKER_CREDENTIALS = 'dockerhub-creds'
+        PROD_SERVER = '172.31.14.220'
     }
 
     stages {
@@ -34,7 +35,7 @@ pipeline {
             }
         }
 
-        stage('Push to Private Docker Hub') {
+        stage('Push to Docker Hub') {
             steps {
                 withCredentials([
                     usernamePassword(
@@ -55,12 +56,22 @@ pipeline {
             }
         }
 
-        stage('Deploy Production') {
+        stage('Deploy to EC2-2 PROD') {
             steps {
-                sh '''
-                    chmod +x deploy.sh
-                    ./deploy.sh prod
-                '''
+                sshagent(credentials: ['app-server-key']) {
+                    sh '''
+                        ssh -o StrictHostKeyChecking=no ubuntu@${PROD_SERVER} "
+                            docker pull riyaz7373/devops-build-prod:prod &&
+                            docker stop devops-app || true &&
+                            docker rm devops-app || true &&
+                            docker run -d \
+                                --name devops-app \
+                                --restart always \
+                                -p 80:80 \
+                                riyaz7373/devops-build-prod:prod
+                        "
+                    '''
+                }
             }
         }
     }
